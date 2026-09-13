@@ -94,39 +94,62 @@ in der Regel aus.
 SideStore braucht eine Pairing-Datei, um das iPhone ohne Computer bedienen zu
 koennen.
 
-```bash
-# Werkzeug holen (Teil des Jitterbug-Projekts).
-# Das Release-Asset ist ein ZIP, kein tar.gz, und heisst ohne Architektur-Suffix.
-wget https://github.com/osy/Jitterbug/releases/latest/download/jitterbugpair-linux.zip
-unzip jitterbugpair-linux.zip
-chmod +x jitterbugpair
+Viele Anleitungen schicken einen dafuer zu `jitterbugpair`. Das ist auf einem
+aktuellen Linux der Umweg: Das Werkzeug braucht man gar nicht, denn
+`libimobiledevice` legt beim Pairing ohnehin genau den Datensatz an, den
+SideStore haben will.
 
-# iPhone muss angeschlossen und entsperrt sein
-./jitterbugpair
+```bash
+idevicepair pair
+UDID=$(idevice_id -l)
+
+sudo cp /var/lib/lockdown/$UDID.plist ./$UDID.mobiledevicepairing
+sudo chown $USER ./$UDID.mobiledevicepairing
+
+# Pruefung: muss 1 ausgeben
+grep -ac EscrowBag ./$UDID.mobiledevicepairing
 ```
 
-Der Binaerbau stammt von Ubuntu 20.04 und ist dynamisch gegen
-`libimobiledevice` gelinkt. Beschwert er sich ueber eine fehlende
-`libimobiledevice-1.0.so.*`, gibt es zwei Auswege:
+Der **EscrowBag** ist der entscheidende Teil -- ohne ihn kann SideStore das
+Geraet spaeter nicht ansprechen. Gibt `grep` eine `0` aus, ist beim Pairing
+etwas schiefgelaufen: iPhone entsperren, "Vertrauen" bestaetigen und
+`idevicepair pair` wiederholen.
+
+Liegt die Datei nicht unter `/var/lib/lockdown`:
 
 ```bash
-# a) selbst bauen
-sudo apt install meson ninja-build libgcrypt-dev libusbmuxd-dev \
-     libimobiledevice-dev libunistring-dev
-git clone --recursive https://github.com/osy/Jitterbug
-cd Jitterbug && meson --buildtype=release build && cd build && ninja
-
-# b) den Pairing-Datensatz nehmen, den libimobiledevice ohnehin anlegt
-idevicepair pair
-sudo cp /var/lib/lockdown/<UDID>.plist ./<UDID>.mobiledevicepairing
-sudo chown $USER ./<UDID>.mobiledevicepairing
+sudo find /var -name "$UDID.plist" 2>/dev/null
 ```
 
 Heraus kommt eine Datei wie `00008120-000X1XXX0XXX401E.mobiledevicepairing`.
-**Gut aufheben** -- sie wird gleich gebraucht.
+**Gut aufheben** -- sie wird in Schritt 5 gebraucht.
 
 > Manche SideStore-Versionen erwarten die Datei mit der Endung `.plist`. Dann
 > einfach umbenennen; der Inhalt ist identisch.
+
+### Warum nicht jitterbugpair?
+
+Der Vollstaendigkeit halber, falls du in anderen Anleitungen darueber stolperst:
+
+```bash
+wget https://github.com/osy/Jitterbug/releases/latest/download/jitterbugpair-linux.zip
+unzip jitterbugpair-linux.zip && chmod +x jitterbugpair && ./jitterbugpair
+```
+
+Auf einem aktuellen Ubuntu scheitert beides -- die fertige Binaerdatei **und**
+der Selbstbau:
+
+* Der Binaerbau stammt von Ubuntu 20.04 und verlangt `libplist.so.3`
+  (libplist 2.1). Ubuntu 22.04 und 24.04 liefern libplist 2.2 bzw. 2.3 mit
+  anderem Soname. Einen Symlink zu legen waere keine Loesung: Der
+  Soname-Sprung bedeutet inkompatibles ABI.
+* Der Selbstbau bricht ab mit
+  `error: redeclaration of enumerator 'PLIST_FORMAT_XML'`. Jitterbugs
+  mitgelieferte Header (Stand 2021) deklarieren das Enum selbst, waehrend
+  libplist 2.3 es inzwischen in `/usr/include/plist/plist.h` fuehrt. Das
+  Projekt wird nicht mehr gepflegt.
+
+Deshalb fuehrt diese Anleitung ueber `idevicepair`.
 
 ---
 
