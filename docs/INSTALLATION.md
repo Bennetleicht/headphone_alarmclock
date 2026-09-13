@@ -95,12 +95,31 @@ SideStore braucht eine Pairing-Datei, um das iPhone ohne Computer bedienen zu
 koennen.
 
 ```bash
-# Werkzeug holen (Teil des Jitterbug-Projekts)
-wget https://github.com/osy/Jitterbug/releases/latest/download/jitterbugpair-linux-x86_64.tar.gz
-tar -xzf jitterbugpair-linux-x86_64.tar.gz
+# Werkzeug holen (Teil des Jitterbug-Projekts).
+# Das Release-Asset ist ein ZIP, kein tar.gz, und heisst ohne Architektur-Suffix.
+wget https://github.com/osy/Jitterbug/releases/latest/download/jitterbugpair-linux.zip
+unzip jitterbugpair-linux.zip
+chmod +x jitterbugpair
 
 # iPhone muss angeschlossen und entsperrt sein
 ./jitterbugpair
+```
+
+Der Binaerbau stammt von Ubuntu 20.04 und ist dynamisch gegen
+`libimobiledevice` gelinkt. Beschwert er sich ueber eine fehlende
+`libimobiledevice-1.0.so.*`, gibt es zwei Auswege:
+
+```bash
+# a) selbst bauen
+sudo apt install meson ninja-build libgcrypt-dev libusbmuxd-dev \
+     libimobiledevice-dev libunistring-dev
+git clone --recursive https://github.com/osy/Jitterbug
+cd Jitterbug && meson --buildtype=release build && cd build && ninja
+
+# b) den Pairing-Datensatz nehmen, den libimobiledevice ohnehin anlegt
+idevicepair pair
+sudo cp /var/lib/lockdown/<UDID>.plist ./<UDID>.mobiledevicepairing
+sudo chown $USER ./<UDID>.mobiledevicepairing
 ```
 
 Heraus kommt eine Datei wie `00008120-000X1XXX0XXX401E.mobiledevicepairing`.
