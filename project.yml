@@ -1,0 +1,71 @@
+# XcodeGen-Projektbeschreibung.
+# Ermoeglicht es, das Xcode-Projekt (.xcodeproj) rein aus dieser YAML-Datei
+# zu erzeugen -- dadurch kann der gesamte Quellcode unter Linux gepflegt
+# werden, waehrend nur der Build-Schritt auf einem macOS-Runner laeuft.
+#
+#   xcodegen generate     -> erzeugt TrainAlarm.xcodeproj
+#
+name: TrainAlarm
+options:
+  bundleIdPrefix: de.trainalarm
+  deploymentTarget:
+    iOS: "16.0"
+  createIntermediateGroups: true
+  generateEmptyDirectories: false
+
+settings:
+  base:
+    MARKETING_VERSION: "1.0.0"
+    CURRENT_PROJECT_VERSION: "1"
+    SWIFT_VERSION: "5.9"
+    IPHONEOS_DEPLOYMENT_TARGET: "16.0"
+    # Sideloading (SideStore/AltStore) signiert die App spaeter selbst,
+    # deshalb wird im CI unsigniert gebaut.
+    CODE_SIGN_STYLE: Manual
+    DEVELOPMENT_TEAM: ""
+    ENABLE_USER_SCRIPT_SANDBOXING: NO
+
+targets:
+  TrainAlarm:
+    type: application
+    platform: iOS
+    sources:
+      - path: Sources/TrainAlarm
+      - path: Resources/Assets.xcassets
+    info:
+      path: Resources/Info.plist
+      properties:
+        CFBundleDisplayName: TrainAlarm
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        # Audio im Hintergrund: haelt die App am Leben, solange der
+        # Wecker scharf geschaltet ist (siehe KeepAlive in AlarmAudioEngine).
+        UIBackgroundModes:
+          - audio
+        UILaunchScreen:
+          UIColorName: LaunchBackground
+        UIUserInterfaceStyle: Dark
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+        UIRequiredDeviceCapabilities:
+          - arm64
+        ITSAppUsesNonExemptEncryption: false
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: de.trainalarm.app
+        PRODUCT_NAME: TrainAlarm
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        TARGETED_DEVICE_FAMILY: "1"
+        GENERATE_INFOPLIST_FILE: NO
+        SWIFT_EMIT_LOC_STRINGS: YES
+
+schemes:
+  TrainAlarm:
+    build:
+      targets:
+        TrainAlarm: all
+    run:
+      config: Debug
+    archive:
+      config: Release

@@ -1,0 +1,88 @@
+name: Build IPA
+
+# Baut TrainAlarm auf einem macOS-Runner zu einer unsignierten .ipa.
+# Unsigniert ist genau richtig fuer Sideloading: SideStore bzw. AltStore
+# signieren die App beim Installieren selbst mit deinem Apple-Account.
+
+on:
+  push:
+    branches: ["**"]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  SCHEME: TrainAlarm
+  PRODUCT: TrainAlarm
+
+jobs:
+  build:
+    name: Unsignierte IPA bauen
+    runs-on: macos-14
+    timeout-minutes: 30
+    permissions:
+      contents: write
+
+    steps:
+      - name: Repository auschecken
+        uses: actions/checkout@v4
+
+      - name: Xcode-Version waehlen
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - name: Werkzeuge anzeigen
+        run: |
+          xcodebuild -version
+          swift --version
+
+      - name: XcodeGen installieren
+        run: brew install xcodegen
+
+      - name: Xcode-Projekt erzeugen
+        run: xcodegen generate --spec project.yml
+
+      - name: Bauen (ohne Signatur)
+        run: |
+          set -o pipefail
+          xcodebuild \
+            -project "${PRODUCT}.xcodeproj" \
+            -scheme "${SCHEME}" \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath build \
+            ONLY_ACTIVE_ARCH=NO \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGN_ENTITLEMENTS="" \
+            build
+
+      - name: IPA paketieren
+        run: bash Scripts/package-ipa.sh "build/Build/Products/Release-iphoneos/${PRODUCT}.app" "${PRODUCT}.ipa"
+
+      - name: IPA als Artefakt hochladen
+        uses: actions/upload-artifact@v4
+        with:
+          name: TrainAlarm-unsigned-ipa
+          path: TrainAlarm.ipa
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Release anhaengen (nur bei Tags)
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: TrainAlarm.ipa
+          body: |
+            Unsignierte IPA von TrainAlarm.
+
+            Installation mit SideStore oder AltStore -- siehe `docs/INSTALLATION.md`.
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

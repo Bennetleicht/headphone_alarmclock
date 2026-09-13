@@ -1,0 +1,20 @@
+# Von XcodeGen erzeugt -- gehoert nicht ins Repository.
+*.xcodeproj/
+*.xcworkspace/
+
+# Build-Ergebnisse
+build/
+DerivedData/
+Payload/
+*.ipa
+*.dSYM.zip
+
+# macOS / Editoren
+.DS_Store
+*.swp
+.vscode/
+.idea/
+
+# Python
+__pycache__/
+Resources/Info.plist
