@@ -452,7 +452,7 @@ final class AlarmAudioEngine: ObservableObject {
             }
 
             for frame in 0..<Int(frameCount) {
-                // --- Hüllkurve aus dem Wecktonmuster ---
+                // --- Huellkurve aus dem Wecktonmuster ---
                 var envelope: Float = 0
                 let beepIndex = Int(patternTime / beepSpacing)
                 if beepIndex < beepCount {
