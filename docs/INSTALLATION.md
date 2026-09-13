@@ -193,6 +193,51 @@ Ein paar Hinweise dazu:
 - Der Vorgang dauert ein bis zwei Minuten. Am Ende taucht SideStore auf dem
   Homescreen auf.
 
+### Wenn AltServer mit `auth response status code: 503` abbricht
+
+Der Anisette-Server ist die haeufigste Fehlerquelle auf diesem Weg. Zwei
+Faelle, die in der Praxis auftreten:
+
+**Der oeffentliche Server geht zeitlich falsch.** Apples Anmeldedienst prueft
+den Zeitstempel streng. Vergleiche vor dem Versuch:
+
+```bash
+date -u +%Y-%m-%dT%H:%M:%SZ
+curl -s https://ani.sidestore.io/ | head -c 300; echo
+```
+
+Weicht das `X-Apple-I-Client-Time` aus der Antwort um mehr als ein, zwei
+Minuten von deiner echten UTC-Zeit ab, ist dieser Server unbrauchbar --
+Apple antwortet dann mit `503`, voellig unabhaengig davon, ob Apple-ID und
+Passwort stimmen. Ein anderer oeffentlicher Server oder die lokale Variante
+loest das.
+
+**Der lokale Container stuerzt beim Provisionieren ab.**
+`dadoum/anisette-server:latest` (v2.2.2) bricht auf Ubuntu 24.04 nach
+`Machine requires provisioning...` mit einem Stacktrace ab; Port 6969 bleibt
+danach tot (`curl` liefert `000`). Ein persistentes Volume behebt das nicht
+zuverlaessig:
+
+```bash
+sudo docker run -d -p 6969:6969 -v anisette:/home/Alcoholic/.config/Provision/ \
+  dadoum/anisette-server:latest
+sudo docker logs $(sudo docker ps -laq) 2>&1 | tail -30
+```
+
+**Weitere Stolpersteine in derselben Befehlszeile:**
+
+* `Could not install ... to unknown` heisst, dass `$UDID` leer war. Die
+  Variable ueberlebt keinen Shell-Wechsel -- vor jedem Versuch neu setzen und
+  mit `echo "UDID='$UDID'"` pruefen.
+* Bei `-p` gehoert das **app-spezifische** Passwort hin (vier Vierergruppen),
+  nicht das Apple-ID-Passwort. Zu finden unter *Settings -> dein Name ->
+  Sign-In & Security -> App-Specific Passwords* (bis iOS 16: *Password &
+  Security*).
+
+Wer diese Kette nicht durchbekommt, kommt ueber einen Windows- oder
+Mac-Rechner in Minuten ans Ziel -- siehe den Abschnitt weiter unten. Nach der
+Ersteinrichtung von SideStore wird dieser Rechner nie wieder gebraucht.
+
 **Entwickler vertrauen:** Einstellungen -> Allgemein -> VPN & Geraeteverwaltung
 -> deine Apple-ID -> **Vertrauen**.
 
